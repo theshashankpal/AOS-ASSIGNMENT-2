@@ -38,8 +38,6 @@ int main(int argc, char *argv[])
         int *busy_array = ptr + (size * sizeof(int));
         result = ptr + (2 * size * sizeof(int));
 
-        
-
         srand(time(NULL) + getpid());
 
         int opponent = against[me];
@@ -47,8 +45,8 @@ int main(int argc, char *argv[])
         printf("Starting Match : Team %d vs Team %d\n", me + 1, opponent + 1);
         sleep(3);
 
-        int mine_score = rand() % 5;
-        int opponent_score = rand() % 5;
+        int mine_score = rand() % 6;
+        int opponent_score = rand() % 6;
         result[me][count].team = opponent;
         result[me][count].mine = mine_score;
         result[me][count++].against = opponent_score;

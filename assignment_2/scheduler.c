@@ -12,6 +12,7 @@ typedef struct _fixture
 
 typedef struct _table
 {
+    int mine_index;
     int won;
     int lost;
     int tie;
@@ -60,7 +61,7 @@ int main(int argc, char *argv[])
 
     printf("Size of queue is %ld\n", getSize(q));
 
-    printf("Fixtures read from file : \n");
+    printf("Fixtures read from file, now gonna start scheduling them : \n");
 
     fclose(fp);
     if (line)
@@ -127,6 +128,8 @@ int main(int argc, char *argv[])
 
     fixture team;
 
+    printf("\n\n");
+
     while (!isEmpty(q))
     {
 
@@ -155,59 +158,86 @@ int main(int argc, char *argv[])
         kill(manager_array[i], SIGTERM);
     }
 
-    // int *against = (int *)ptr;
-    // result = ptr + (size * sizeof(int));
+    table **score_sheet = (table **)calloc(size, sizeof(table *));
 
-    // printf("Against array : \n");
-    // for (size_t i = 0; i < size; i++)
-    // {
-    //     printf("%d ", against[i]);
-    // }
+    for (size_t i = 0; i < size; i++)
+    {
+        score_sheet[i] = (table *)malloc(sizeof(table));
+        score_sheet[i]->mine_index = i;
+        score_sheet[i]->goals_conceded = 0;
+        score_sheet[i]->goals_scored = 0;
+        score_sheet[i]->lost = 0;
+        score_sheet[i]->score = 0;
+        score_sheet[i]->tie = 0;
+        score_sheet[i]->won = 0;
+    }
 
-    // printf("\n");
-
-    table *score_sheet = (table *)calloc(size, sizeof(table));
-    // fixture *schedule = (fixture *)calloc(size, sizeof(fixture));
-
-    // for (size_t i = 0; i < size; i++)
-    // {
-    //     printf("Record for %ld : \n",i);
-    //     for (size_t j = 0; j < size-1; j++)
-    //     {
-    //         printf("%d : %d : %d \n",result[i][j].team,result[i][j].mine,result[i][j].against);
-    //     }
-
-    // }
 
     for (size_t i = 0; i < size; i++)
     {
         for (size_t j = 0; j < size - 1; j++)
         {
             int team = result[i][j].team;
-            score_sheet[i].goals_scored += result[i][j].mine;
-            score_sheet[i].goals_conceded += result[i][j].against;
-            score_sheet[team].goals_scored += result[i][j].against;
-            score_sheet[team].goals_conceded += result[i][j].mine;
+            score_sheet[i]->goals_scored += result[i][j].mine;
+            score_sheet[i]->goals_conceded += result[i][j].against;
+            score_sheet[team]->goals_scored += result[i][j].against;
+            score_sheet[team]->goals_conceded += result[i][j].mine;
             if (result[i][j].mine > result[i][j].against)
             {
-                score_sheet[i].won += 1;
-                score_sheet[team].lost += 1;
-                score_sheet[i].score += 3;
+                score_sheet[i]->won += 1;
+                score_sheet[team]->lost += 1;
+                score_sheet[i]->score += 3;
             }
             else if (result[i][j].mine < result[i][j].against)
             {
-                score_sheet[team].won += 1;
-                score_sheet[i].lost += 1;
-                score_sheet[team].score += 3;
+                score_sheet[team]->won += 1;
+                score_sheet[i]->lost += 1;
+                score_sheet[team]->score += 3;
             }
             else
             {
-                score_sheet[i].tie += 1;
-                score_sheet[team].tie += 1;
-                score_sheet[i].score += 1;
-                score_sheet[team].score += 1;
+                score_sheet[i]->tie += 1;
+                score_sheet[team]->tie += 1;
+                score_sheet[i]->score += 1;
+                score_sheet[team]->score += 1;
             }
         }
+    }
+
+    for (size_t i = 0; i < size; i++)
+    {
+        table *starter = score_sheet[i];
+
+        for (size_t j = i; j < size; j++)
+        {
+            if (starter->score < score_sheet[j]->score)
+            {
+                table *temp = score_sheet[j];
+                score_sheet[j] = starter;
+                starter = temp;
+            }
+            else if (starter->score == score_sheet[j]->score)
+            {
+                if (starter->goals_scored < score_sheet[j]->goals_scored)
+                {
+                    table *temp = score_sheet[j];
+                    score_sheet[j] = starter;
+                    starter = temp;
+                }
+
+                else if (starter->goals_scored == score_sheet[j]->goals_scored)
+                {
+                    if (starter->mine_index > score_sheet[j]->mine_index)
+                    {
+                        table *temp = score_sheet[j];
+                        score_sheet[j] = starter;
+                        starter = temp;
+                    }
+                }
+            }
+        }
+
+        score_sheet[i]=starter;
     }
 
     char *topRow[] = {"Team", "W", "D", "L", "GS", "GC", "Points"};
@@ -219,29 +249,26 @@ int main(int argc, char *argv[])
     for (int i = 0; i < size; i++)
     {
         printf("%*d%*d%*d%*d%*d%*d%*d",
-               -TAB, i + 1,
-               -TAB, score_sheet[i].won,
-               -TAB, score_sheet[i].tie,
-               -TAB, score_sheet[i].lost,
-               -TAB, score_sheet[i].goals_scored,
-               -TAB, score_sheet[i].goals_conceded,
-               -TAB, score_sheet[i].score);
+               -TAB, score_sheet[i]->mine_index + 1,
+               -TAB, score_sheet[i]->won,
+               -TAB, score_sheet[i]->tie,
+               -TAB, score_sheet[i]->lost,
+               -TAB, score_sheet[i]->goals_scored,
+               -TAB, score_sheet[i]->goals_conceded,
+               -TAB, score_sheet[i]->score);
         printf("\n");
     }
 
-    // printf("Results that are stored in the shared memory \n");
 
-    // for (size_t i = 0; i < size; i++)
-    // {
-    //     for (size_t j = 0; j < size - 1; j++)
-    //     {
-    //         printf("%d vs %d", result[i][j].mine, result[i][j].against);
-    //         printf("\n");
-    //     }
-    // }
+    for (size_t i = 0; i < size; i++)
+    {
+        free(score_sheet[i]);
+    }
 
-    printf("\n\n");
+    free(score_sheet);
     
+    printf("\n\n");
+
     clearQueue(q);
     printf("Cleared queue\n");
     destroyQueue(q);
@@ -255,12 +282,4 @@ int main(int argc, char *argv[])
 
     // Unlinking shared memory segment , so it can be destroyed.
     shm_unlink(SHARED_MEMORY_NAME);
-
-    // Destroying semaphore.
-    // sem_destroy(sem);
-    // exit(EXIT_SUCCESS);
-
-    // // Initialization of a semaphore
-    // sem = &(ptr->semaphore);
-    // sem_init(sem, 1, 1);
 }

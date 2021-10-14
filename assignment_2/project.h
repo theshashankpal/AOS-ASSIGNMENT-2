@@ -36,11 +36,4 @@ typedef struct _SS
     int against;
 } SS;
 
-
-struct shared_memory_structure
-{
-    int *against;
-    SS *sheet;
-};
-
 #endif //ASSIGNMENT_H

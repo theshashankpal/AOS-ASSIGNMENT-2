@@ -162,14 +162,8 @@ int main(int argc, char *argv[])
 
     for (size_t i = 0; i < size; i++)
     {
-        score_sheet[i] = (table *)malloc(sizeof(table));
+        score_sheet[i] = (table *)calloc(1,sizeof(table));
         score_sheet[i]->mine_index = i;
-        score_sheet[i]->goals_conceded = 0;
-        score_sheet[i]->goals_scored = 0;
-        score_sheet[i]->lost = 0;
-        score_sheet[i]->score = 0;
-        score_sheet[i]->tie = 0;
-        score_sheet[i]->won = 0;
     }
 
 

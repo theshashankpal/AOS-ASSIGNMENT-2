@@ -27,6 +27,7 @@
 #define SHARED_MEMORY_NAME "/SYSSHAREDMEMORY"
 
 extern int shm_fd;
+extern void* ptr;
 
 typedef struct _SS
 {   

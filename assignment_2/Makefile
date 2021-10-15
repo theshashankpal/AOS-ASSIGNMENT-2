@@ -21,4 +21,4 @@ queue.o: queue.c queue.h
 	$(CC) $(CFLAGS) $^
 
 clean: 
-	rm -rf *.o scheduler manager
+	rm -rf *.o scheduler manager output

@@ -30,7 +30,7 @@ int main(int argc, char *argv[])
 
     FILE *fp;
     char *line = NULL;
-    fp = fopen("fixtures.txt", "r"); // opening file in read mode.
+    fp = fopen("src/fixtures.txt", "r"); // opening file in read mode.
     size_t len = 0;
     ssize_t read;
     if (fp == NULL)
@@ -59,7 +59,7 @@ int main(int argc, char *argv[])
         enqueue(q, &team);
     }
 
-    printf("Size of queue is : %ld\n", getSize(q));
+    // printf("Size of queue is : %ld\n", getSize(q));
 
     printf("Fixtures are read from file, now gonna start scheduling them : \n");
 
@@ -255,7 +255,7 @@ int main(int argc, char *argv[])
     printf("\n\n");
 
     printf("%*s%*s%*s%*s%*s%*s%*s\n", -TAB, topRow[0], -TAB, topRow[1], -TAB, topRow[2], -TAB, topRow[3], -TAB, topRow[4], -TAB, topRow[5], -TAB, topRow[6]);
-    printf("----------------------------------------------------------------------\n");
+    printf("-------------------------------------------------------------------\n");
     for (int i = 0; i < size; i++)
     {
         printf("%*d%*d%*d%*d%*d%*d%*d",

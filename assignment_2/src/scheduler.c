@@ -25,11 +25,12 @@ typedef struct _table
 
 int main(int argc, char *argv[])
 {
-    shm_unlink(SHARED_MEMORY_NAME);
+    printf("\n\n");
+    shm_unlink(SHARED_MEMORY_NAME); // just a precaution.
 
     FILE *fp;
     char *line = NULL;
-    fp = fopen("fixtures.txt", "r");
+    fp = fopen("fixtures.txt", "r"); // opening file in read mode.
     size_t len = 0;
     ssize_t read;
     if (fp == NULL)
@@ -45,10 +46,9 @@ int main(int argc, char *argv[])
 
     printf("No. of teams : %d\n", size);
 
-    // fixture *schedule = (fixture *)calloc(size, sizeof(fixture));
-
     int count = 0;
 
+    // Reading fixtures from file and storing them in the queue.
     while ((read = getline(&line, &len, fp)) != -1)
     {
         int first = atoi(line);
@@ -59,15 +59,22 @@ int main(int argc, char *argv[])
         enqueue(q, &team);
     }
 
-    printf("Size of queue is %ld\n", getSize(q));
+    printf("Size of queue is : %ld\n", getSize(q));
 
-    printf("Fixtures read from file, now gonna start scheduling them : \n");
+    printf("Fixtures are read from file, now gonna start scheduling them : \n");
 
+    // Closing the file descriptor and freeing up the memory used to read lines from a file.
     fclose(fp);
     if (line)
         free(line);
 
     pid_t manager_array[size];
+
+    /*
+        Calculating allocation size of shared memory :
+        - We're putting two int arrays whose size will be equivalent to total number of teams(n).
+        - And lastly a 2D struct _SS array whose outer size will be (n) and inner size will be (n-1).
+    */
     int allocation_size = size * (sizeof(int)) + size * (sizeof(int)) + (size * size - 1) * (sizeof(struct _SS));
 
     // Creating shared memory segment
@@ -93,48 +100,47 @@ int main(int argc, char *argv[])
         exit(2);
     }
 
-    // SS result[size-1];
+    // Declaration for our 2d array, so we can use it easily without bothering with pointers.
     SS(*result)
     [size - 1];
 
-    int *against = (int *)ptr;
-    result = ptr + (2 * size * sizeof(int));
-    int *busy_array = ptr + (size * sizeof(int));
+    int *against = (int *)ptr;                    // setting base address for first array
+    result = ptr + (2 * size * sizeof(int));      // setting base address for 2d array.
+    int *busy_array = ptr + (size * sizeof(int)); // setting base address for second array.
 
     for (size_t i = 0; i < size; i++)
     {
-        busy_array[i] = 1;
+        busy_array[i] = 1; // making all 1's indicating every manager is available for schedule.
     }
 
-    char team1[256];
-    sprintf(team1, "%d", size);
+    char totalTeams[256];
+    sprintf(totalTeams, "%d", size); // to pass size = no. of total teams to each manager process.
 
     for (size_t i = 0; i < size; i++)
     {
         pid_t child = fork();
         if (child == 0)
         {
-            char team[256];
-            sprintf(team, "%ld", i);
-
-            char *args[] = {"./manager", team, team1, NULL};
+            char processIndex[256];
+            sprintf(processIndex, "%ld", i); // to pass an index which will tell each manager process what their index is.
+            char *args[] = {"./manager", processIndex, totalTeams, NULL};
             execv("./manager", args);
         }
         else
         {
-            manager_array[i] = child;
+            manager_array[i] = child; // storing all pids in an array for easy referencing.
         }
     }
 
-    fixture team;
-
     printf("\n\n");
+
+    fixture team;
 
     while (!isEmpty(q))
     {
 
         dequeue(q, &team);
-        // printf("%d vs %d \n", team.first, team.second);
+
         if (busy_array[team.first] == 1 && busy_array[team.second] == 1)
         {
             busy_array[team.first] = 0;
@@ -150,23 +156,26 @@ int main(int argc, char *argv[])
         }
     }
 
-    while (!(busy_array[team.first] == 1 && busy_array[team.second] == 1))
+    while (!(busy_array[team.first] == 1 && busy_array[team.second] == 1)) // waiting for the last manager_process to finish its match
         ;
 
+    siginfo_t sig;
+    waitid(P_PID, manager_array[team.first], &sig, WSTOPPED); // waiting for the last manager_process to remove all file descriptors to shared memory.
+
     for (size_t i = 0; i < size; i++)
     {
-        kill(manager_array[i], SIGTERM);
+        kill(manager_array[i], SIGTERM); // now as all manager_process's work have been completed, killing them.
     }
 
-    table **score_sheet = (table **)calloc(size, sizeof(table *));
+    table **score_sheet = (table **)calloc(size, sizeof(table *)); // making a local data structure to capture or make the final score table, from results that are updated by manager processes
 
     for (size_t i = 0; i < size; i++)
     {
-        score_sheet[i] = (table *)calloc(1,sizeof(table));
+        score_sheet[i] = (table *)calloc(1, sizeof(table)); // allocating all ds, doing this way because we also have to sort them in future , so having a pointer to struct in an array works.
         score_sheet[i]->mine_index = i;
     }
 
-
+    // Making final table.
     for (size_t i = 0; i < size; i++)
     {
         for (size_t j = 0; j < size - 1; j++)
@@ -198,6 +207,8 @@ int main(int argc, char *argv[])
         }
     }
 
+
+    // Sorting the table by the given constraint. Used selection sort.
     for (size_t i = 0; i < size; i++)
     {
         table *starter = score_sheet[i];
@@ -230,10 +241,10 @@ int main(int argc, char *argv[])
                 }
             }
         }
-
-        score_sheet[i]=starter;
+        score_sheet[i] = starter;
     }
 
+    // Printing the table.
     char *topRow[] = {"Team", "W", "D", "L", "GS", "GC", "Points"};
 
     printf("\n\n");
@@ -254,19 +265,22 @@ int main(int argc, char *argv[])
     }
 
 
+    // Freeing up all the used local and shared memory.
+    
     for (size_t i = 0; i < size; i++)
     {
         free(score_sheet[i]);
     }
 
     free(score_sheet);
-    
+
     printf("\n\n");
 
+    // Clearing queue any unused ds that is still in the queue.
     clearQueue(q);
-    printf("Cleared queue\n");
+
+    // Destroying the queue.
     destroyQueue(q);
-    printf("Destroyed queue\n");
 
     // Unmapping the shared object from process's virtual space.
     munmap(ptr, sizeof(allocation_size));

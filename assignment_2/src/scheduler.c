@@ -136,6 +136,7 @@ int main(int argc, char *argv[])
 
     fixture team;
 
+    // scheduling matches
     while (!isEmpty(q))
     {
 
@@ -143,12 +144,16 @@ int main(int argc, char *argv[])
 
         if (busy_array[team.first] == 1 && busy_array[team.second] == 1)
         {
+            // making those teams busy, so that they can't be scheduled again , until they've finished their work.
             busy_array[team.first] = 0;
             busy_array[team.second] = 0;
+
+            // storing the opponent info , so that manager_process can know who their opponent is .
             against[team.first] = team.second;
+
             siginfo_t sig;
-            waitid(P_PID, manager_array[team.first], &sig, WSTOPPED);
-            kill(manager_array[team.first], SIGCONT);
+            waitid(P_PID, manager_array[team.first], &sig, WSTOPPED); // waiting for manager_process to stop
+            kill(manager_array[team.first], SIGCONT); // giving it the continue signal
         }
         else
         {

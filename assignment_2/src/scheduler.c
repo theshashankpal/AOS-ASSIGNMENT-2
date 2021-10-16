@@ -32,6 +32,8 @@ void tableCreation(table **, SS (*)[]);
 
 void scheduling(queue *, int *, fixture *);
 
+void printingTable(table **);
+
 #define TAB -10
 
 int main(int argc, char *argv[])
@@ -147,22 +149,26 @@ int main(int argc, char *argv[])
     fixture team;
     scheduling(q, manager_array, &team);
 
-    while (!(busy_array[team.first] == 1 && busy_array[team.second] == 1)) // waiting for the last manager_process to finish its match
+    // waiting for the last manager_process to finish its match
+    while (!(busy_array[team.first] == 1 && busy_array[team.second] == 1))
         ;
 
+    // waiting for the last manager_process to remove all file descriptors to shared memory.
     siginfo_t sig;
-    waitid(P_PID, manager_array[team.first], &sig, WSTOPPED); // waiting for the last manager_process to remove all file descriptors to shared memory.
+    waitid(P_PID, manager_array[team.first], &sig, WSTOPPED);
 
+    // now as all manager_process's work have been completed, killing them.
     for (size_t i = 0; i < size; i++)
     {
-        kill(manager_array[i], SIGTERM); // now as all manager_process's work have been completed, killing them.
+        kill(manager_array[i], SIGTERM);
     }
 
     table **score_sheet = (table **)calloc(size, sizeof(table *)); // making a local data structure to capture or make the final score table, from results that are updated by manager processes
 
+    // allocating all ds, doing this way because we also have to sort them in future , so having a pointer to struct in an array works.
     for (size_t i = 0; i < size; i++)
     {
-        score_sheet[i] = (table *)calloc(1, sizeof(table)); // allocating all ds, doing this way because we also have to sort them in future , so having a pointer to struct in an array works.
+        score_sheet[i] = (table *)calloc(1, sizeof(table));
         score_sheet[i]->mine_index = i;
     }
 
@@ -173,27 +179,9 @@ int main(int argc, char *argv[])
     sort(score_sheet);
 
     // Printing the table.
-    char *topRow[] = {"Team", "W", "D", "L", "GS", "GC", "Points"};
-
-    printf("\n\n");
-
-    printf("%*s%*s%*s%*s%*s%*s%*s\n", TAB, topRow[0], TAB, topRow[1], TAB, topRow[2], TAB, topRow[3], TAB, topRow[4], TAB, topRow[5], TAB, topRow[6]);
-    printf("-------------------------------------------------------------------\n");
-    for (int i = 0; i < size; i++)
-    {
-        printf("%*d%*d%*d%*d%*d%*d%*d",
-               TAB, score_sheet[i]->mine_index + 1,
-               TAB, score_sheet[i]->won,
-               TAB, score_sheet[i]->tie,
-               TAB, score_sheet[i]->lost,
-               TAB, score_sheet[i]->goals_scored,
-               TAB, score_sheet[i]->goals_conceded,
-               TAB, score_sheet[i]->score);
-        printf("\n");
-    }
+    printingTable(score_sheet);
 
     // Freeing up all the used local and shared memory.
-
     for (size_t i = 0; i < size; i++)
     {
         free(score_sheet[i]);
@@ -314,5 +302,27 @@ void sort(table **score_sheet)
             }
         }
         score_sheet[i] = starter;
+    }
+}
+
+void printingTable(table **score_sheet)
+{
+    char *topRow[] = {"Team", "W", "D", "L", "GS", "GC", "Points"};
+
+    printf("\n\n");
+
+    printf("%*s%*s%*s%*s%*s%*s%*s\n", TAB, topRow[0], TAB, topRow[1], TAB, topRow[2], TAB, topRow[3], TAB, topRow[4], TAB, topRow[5], TAB, topRow[6]);
+    printf("-------------------------------------------------------------------\n");
+    for (int i = 0; i < size; i++)
+    {
+        printf("%*d%*d%*d%*d%*d%*d%*d",
+               TAB, score_sheet[i]->mine_index + 1,
+               TAB, score_sheet[i]->won,
+               TAB, score_sheet[i]->tie,
+               TAB, score_sheet[i]->lost,
+               TAB, score_sheet[i]->goals_scored,
+               TAB, score_sheet[i]->goals_conceded,
+               TAB, score_sheet[i]->score);
+        printf("\n");
     }
 }

@@ -3,13 +3,18 @@
 
 int shm_fd;
 void *ptr;
+int size;
+int *against;
+int *busy_array;
 
+// ds to store in a queue that is used for scheduling purposes.
 typedef struct _fixture
 {
     int first;
     int second;
 } fixture;
 
+// for final table
 typedef struct _table
 {
     int mine_index;
@@ -21,7 +26,13 @@ typedef struct _table
     int score;
 } table;
 
-#define TAB 10
+void sort(table **);
+
+void tableCreation(table **, SS (*)[]);
+
+void scheduling(queue *, int *, fixture *);
+
+#define TAB -10
 
 int main(int argc, char *argv[])
 {
@@ -42,11 +53,9 @@ int main(int argc, char *argv[])
     queue *q = createQueue(sizeof(fixture));
 
     read = getline(&line, &len, fp);
-    int size = atoi(line);
+    size = atoi(line);
 
     printf("No. of teams : %d\n", size);
-
-    int count = 0;
 
     // Reading fixtures from file and storing them in the queue.
     while ((read = getline(&line, &len, fp)) != -1)
@@ -104,16 +113,16 @@ int main(int argc, char *argv[])
     SS(*result)
     [size - 1];
 
-    int *against = (int *)ptr;                    // setting base address for first array
-    result = ptr + (2 * size * sizeof(int));      // setting base address for 2d array.
-    int *busy_array = ptr + (size * sizeof(int)); // setting base address for second array.
+    against = (int *)ptr;                    // setting base address for first array i.e. against_array
+    result = ptr + (2 * size * sizeof(int)); // setting base address for 2d array.
+    busy_array = ptr + (size * sizeof(int)); // setting base address for second array. i.e. base_array
 
     for (size_t i = 0; i < size; i++)
     {
         busy_array[i] = 1; // making all 1's indicating every manager is available for schedule.
     }
 
-    char totalTeams[256];
+    char totalTeams[11];
     sprintf(totalTeams, "%d", size); // to pass size = no. of total teams to each manager process.
 
     for (size_t i = 0; i < size; i++)
@@ -121,7 +130,7 @@ int main(int argc, char *argv[])
         pid_t child = fork();
         if (child == 0)
         {
-            char processIndex[256];
+            char processIndex[11];
             sprintf(processIndex, "%ld", i); // to pass an index which will tell each manager process what their index is.
             char *args[] = {"./manager", processIndex, totalTeams, NULL};
             execv("./manager", args);
@@ -134,32 +143,9 @@ int main(int argc, char *argv[])
 
     printf("\n\n");
 
-    fixture team;
-
     // scheduling matches
-    while (!isEmpty(q))
-    {
-
-        dequeue(q, &team);
-
-        if (busy_array[team.first] == 1 && busy_array[team.second] == 1)
-        {
-            // making those teams busy, so that they can't be scheduled again , until they've finished their work.
-            busy_array[team.first] = 0;
-            busy_array[team.second] = 0;
-
-            // storing the opponent info , so that manager_process can know who their opponent is .
-            against[team.first] = team.second;
-
-            siginfo_t sig;
-            waitid(P_PID, manager_array[team.first], &sig, WSTOPPED); // waiting for manager_process to stop
-            kill(manager_array[team.first], SIGCONT); // giving it the continue signal
-        }
-        else
-        {
-            enqueue(q, &team);
-        }
-    }
+    fixture team;
+    scheduling(q, manager_array, &team);
 
     while (!(busy_array[team.first] == 1 && busy_array[team.second] == 1)) // waiting for the last manager_process to finish its match
         ;
@@ -181,6 +167,86 @@ int main(int argc, char *argv[])
     }
 
     // Making final table.
+    tableCreation(score_sheet, result);
+
+    // sorting the table by the given constraint. Used selection sort.
+    sort(score_sheet);
+
+    // Printing the table.
+    char *topRow[] = {"Team", "W", "D", "L", "GS", "GC", "Points"};
+
+    printf("\n\n");
+
+    printf("%*s%*s%*s%*s%*s%*s%*s\n", TAB, topRow[0], TAB, topRow[1], TAB, topRow[2], TAB, topRow[3], TAB, topRow[4], TAB, topRow[5], TAB, topRow[6]);
+    printf("-------------------------------------------------------------------\n");
+    for (int i = 0; i < size; i++)
+    {
+        printf("%*d%*d%*d%*d%*d%*d%*d",
+               TAB, score_sheet[i]->mine_index + 1,
+               TAB, score_sheet[i]->won,
+               TAB, score_sheet[i]->tie,
+               TAB, score_sheet[i]->lost,
+               TAB, score_sheet[i]->goals_scored,
+               TAB, score_sheet[i]->goals_conceded,
+               TAB, score_sheet[i]->score);
+        printf("\n");
+    }
+
+    // Freeing up all the used local and shared memory.
+
+    for (size_t i = 0; i < size; i++)
+    {
+        free(score_sheet[i]);
+    }
+
+    free(score_sheet);
+
+    printf("\n\n");
+
+    // Clearing queue any unused ds that is still in the queue.
+    clearQueue(q);
+
+    // Destroying the queue.
+    destroyQueue(q);
+
+    // Unmapping the shared object from process's virtual space.
+    munmap(ptr, sizeof(allocation_size));
+
+    // Closing the file descriptor of shared memory segment.
+    close(shm_fd);
+
+    // Unlinking shared memory segment , so it can be destroyed.
+    shm_unlink(SHARED_MEMORY_NAME);
+}
+
+void scheduling(queue *q, int *manager_array, fixture *team)
+{
+    while (!isEmpty(q))
+    {
+        dequeue(q, team);
+
+        if (busy_array[team->first] == 1 && busy_array[team->second] == 1)
+        {
+            // making those teams busy, so that they can't be scheduled again , until they've finished their work.
+            busy_array[team->first] = 0;
+            busy_array[team->second] = 0;
+
+            // storing the opponent info , so that manager_process can know who their opponent is , when they're signaled to schedule the match.
+            against[team->first] = team->second;
+
+            siginfo_t sig;
+            waitid(P_PID, manager_array[team->first], &sig, WSTOPPED); // waiting for manager_process to stop
+            kill(manager_array[team->first], SIGCONT);                 // giving it the continue signal
+        }
+        else
+        {
+            enqueue(q, team);
+        }
+    }
+}
+
+void tableCreation(table **score_sheet, SS (*result)[size - 1])
+{
     for (size_t i = 0; i < size; i++)
     {
         for (size_t j = 0; j < size - 1; j++)
@@ -211,9 +277,10 @@ int main(int argc, char *argv[])
             }
         }
     }
+}
 
-
-    // Sorting the table by the given constraint. Used selection sort.
+void sort(table **score_sheet)
+{
     for (size_t i = 0; i < size; i++)
     {
         table *starter = score_sheet[i];
@@ -248,51 +315,4 @@ int main(int argc, char *argv[])
         }
         score_sheet[i] = starter;
     }
-
-    // Printing the table.
-    char *topRow[] = {"Team", "W", "D", "L", "GS", "GC", "Points"};
-
-    printf("\n\n");
-
-    printf("%*s%*s%*s%*s%*s%*s%*s\n", -TAB, topRow[0], -TAB, topRow[1], -TAB, topRow[2], -TAB, topRow[3], -TAB, topRow[4], -TAB, topRow[5], -TAB, topRow[6]);
-    printf("-------------------------------------------------------------------\n");
-    for (int i = 0; i < size; i++)
-    {
-        printf("%*d%*d%*d%*d%*d%*d%*d",
-               -TAB, score_sheet[i]->mine_index + 1,
-               -TAB, score_sheet[i]->won,
-               -TAB, score_sheet[i]->tie,
-               -TAB, score_sheet[i]->lost,
-               -TAB, score_sheet[i]->goals_scored,
-               -TAB, score_sheet[i]->goals_conceded,
-               -TAB, score_sheet[i]->score);
-        printf("\n");
-    }
-
-
-    // Freeing up all the used local and shared memory.
-    
-    for (size_t i = 0; i < size; i++)
-    {
-        free(score_sheet[i]);
-    }
-
-    free(score_sheet);
-
-    printf("\n\n");
-
-    // Clearing queue any unused ds that is still in the queue.
-    clearQueue(q);
-
-    // Destroying the queue.
-    destroyQueue(q);
-
-    // Unmapping the shared object from process's virtual space.
-    munmap(ptr, sizeof(allocation_size));
-
-    // Closing the file descriptor of shared memory segment.
-    close(shm_fd);
-
-    // Unlinking shared memory segment , so it can be destroyed.
-    shm_unlink(SHARED_MEMORY_NAME);
 }

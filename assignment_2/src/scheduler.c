@@ -38,7 +38,7 @@ void printingTable(table **);
 
 int main(int argc, char *argv[])
 {
-    printf("\n\n");
+    printf("\n");
     shm_unlink(SHARED_MEMORY_NAME); // just a precaution.
 
     FILE *fp;

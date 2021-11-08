@@ -62,15 +62,35 @@ int main(int argc, char *argv[])
     // Reading fixtures from file and storing them in the queue.
     while ((read = getline(&line, &len, fp)) != -1)
     {
-        int first = atoi(line);
-        int second = atoi(line + 2);
+        char *temp_line = line;
+        int count = 0;
+        char temp[256];
+        while ((*temp_line) != ' ')
+        {
+            temp[count++] = *temp_line;
+            temp_line++;
+        }
+        temp[count] = '\0';
+        int first = atoi(temp);
+
+        temp_line++; // crossed ' '
+
+        char temp1[256];
+        count = 0;
+        while ((*temp_line) != '\n')
+        {
+            temp1[count++] = *temp_line;
+            temp_line++;
+        }
+
+        temp1[count] = '\0';
+        int second = atoi(temp1);
+
         fixture team;
         team.first = first - 1;
         team.second = second - 1;
         enqueue(q, &team);
     }
-
-    // printf("Size of queue is : %ld\n", getSize(q));
 
     printf("Fixtures are read from file, now gonna start scheduling them : \n");
 

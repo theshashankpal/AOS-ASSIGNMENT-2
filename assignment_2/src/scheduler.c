@@ -1,11 +1,7 @@
 #include "project.h"
 #include "queue.h"
 
-int shm_fd;
-void *ptr;
-int size;
-int *against;
-int *busy_array;
+
 
 // ds to store in a queue that is used for scheduling purposes.
 typedef struct _fixture
@@ -26,13 +22,21 @@ typedef struct _table
     int score;
 } table;
 
-void sort(table **);
+int shm_fd;
+void *ptr;
+int size;
+int *against;
+int *busy_array;
+queue *q ;
+table **score_sheet;
 
-void tableCreation(table **, SS (*)[]);
+void sort();
 
-void scheduling(queue *, int *, fixture *);
+void tableCreation(SS (*)[]);
 
-void printingTable(table **);
+void scheduling( int *, fixture *);
+
+void printingTable();
 
 #define TAB -10
 
@@ -52,7 +56,7 @@ int main(int argc, char *argv[])
         exit(EXIT_FAILURE);
     }
 
-    queue *q = createQueue(sizeof(fixture));
+    q = createQueue(sizeof(fixture));
 
     read = getline(&line, &len, fp);
     size = atoi(line);
@@ -113,7 +117,7 @@ int main(int argc, char *argv[])
     if (shm_fd == -1)
     {
         perror("Main Shared Memory ");
-        exit(4);
+        exit(EXIT_FAILURE);
     }
 
     // Allocating space for our defined struct in shared memory.
@@ -128,7 +132,7 @@ int main(int argc, char *argv[])
     if (ptr == MAP_FAILED)
     {
         perror("Main Mapping ");
-        exit(2);
+        exit(EXIT_FAILURE);
     }
 
     // Declaration for our 2d array, so we can use it easily without bothering with pointers.
@@ -167,7 +171,7 @@ int main(int argc, char *argv[])
 
     // scheduling matches
     fixture team;
-    scheduling(q, manager_array, &team);
+    scheduling(manager_array, &team);
 
     // waiting for the last manager_process to finish its match
     while (!(busy_array[team.first] == 1 && busy_array[team.second] == 1))
@@ -183,7 +187,7 @@ int main(int argc, char *argv[])
         kill(manager_array[i], SIGTERM);
     }
 
-    table **score_sheet = (table **)calloc(size, sizeof(table *)); // making a local data structure to capture or make the final score table, from results that are updated by manager processes
+    score_sheet = (table **)calloc(size, sizeof(table *)); // making a local data structure to capture or make the final score table, from results that are updated by manager processes
 
     // allocating all ds, doing this way because we also have to sort them in future , so having a pointer to struct in an array works.
     for (size_t i = 0; i < size; i++)
@@ -193,13 +197,13 @@ int main(int argc, char *argv[])
     }
 
     // Making final table.
-    tableCreation(score_sheet, result);
+    tableCreation(result);
 
     // sorting the table by the given constraint. Used selection sort.
-    sort(score_sheet);
+    sort();
 
     // Printing the table.
-    printingTable(score_sheet);
+    printingTable();
 
     // Freeing up all the used local and shared memory.
     for (size_t i = 0; i < size; i++)
@@ -227,7 +231,7 @@ int main(int argc, char *argv[])
     shm_unlink(SHARED_MEMORY_NAME);
 }
 
-void scheduling(queue *q, int *manager_array, fixture *team)
+void scheduling(int *manager_array, fixture *team)
 {
     while (!isEmpty(q))
     {
@@ -253,7 +257,7 @@ void scheduling(queue *q, int *manager_array, fixture *team)
     }
 }
 
-void tableCreation(table **score_sheet, SS (*result)[size - 1])
+void tableCreation(SS (*result)[size - 1])
 {
     for (size_t i = 0; i < size; i++)
     {
@@ -287,7 +291,7 @@ void tableCreation(table **score_sheet, SS (*result)[size - 1])
     }
 }
 
-void sort(table **score_sheet)
+void sort()
 {
     for (size_t i = 0; i < size; i++)
     {
@@ -325,7 +329,7 @@ void sort(table **score_sheet)
     }
 }
 
-void printingTable(table **score_sheet)
+void printingTable()
 {
     char *topRow[] = {"Team", "W", "D", "L", "GS", "GC", "Points"};
 

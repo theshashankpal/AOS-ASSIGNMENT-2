@@ -1,44 +1,13 @@
 #include "project.h"
-#include "queue.h"
-
-
-
-// ds to store in a queue that is used for scheduling purposes.
-typedef struct _fixture
-{
-    int first;
-    int second;
-} fixture;
-
-// for final table
-typedef struct _table
-{
-    int mine_index;
-    int won;
-    int lost;
-    int tie;
-    int goals_scored;
-    int goals_conceded;
-    int score;
-} table;
 
 int shm_fd;
 void *ptr;
 int size;
 int *against;
 int *busy_array;
-queue *q ;
+queue *q;
 table **score_sheet;
 
-void sort();
-
-void tableCreation(SS (*)[]);
-
-void scheduling( int *, fixture *);
-
-void printingTable();
-
-#define TAB -10
 
 int main(int argc, char *argv[])
 {
@@ -58,50 +27,28 @@ int main(int argc, char *argv[])
 
     q = createQueue(sizeof(fixture));
 
-    read = getline(&line, &len, fp);
-    size = atoi(line);
+    read = fscanf(fp, "%d", &size);
 
     printf("No. of teams : %d\n", size);
 
     // Reading fixtures from file and storing them in the queue.
-    while ((read = getline(&line, &len, fp)) != -1)
+    while (1)
     {
-        char *temp_line = line;
-        int count = 0;
-        char temp[256];
-        while ((*temp_line) != ' ')
-        {
-            temp[count++] = *temp_line;
-            temp_line++;
-        }
-        temp[count] = '\0';
-        int first = atoi(temp);
-
-        temp_line++; // crossed ' '
-
-        char temp1[256];
-        count = 0;
-        while ((*temp_line) != '\n')
-        {
-            temp1[count++] = *temp_line;
-            temp_line++;
-        }
-
-        temp1[count] = '\0';
-        int second = atoi(temp1);
-
+        int first;
+        int second;
+        read = fscanf(fp, "%d%d", &first, &second);
+        if (read == -1)
+            break;
         fixture team;
         team.first = first - 1;
         team.second = second - 1;
         enqueue(q, &team);
     }
 
-    printf("Fixtures are read from file, now gonna start scheduling them : \n");
+    printf("Fixtures have been read from file, now gonna start scheduling them : \n");
 
     // Closing the file descriptor and freeing up the memory used to read lines from a file.
     fclose(fp);
-    if (line)
-        free(line);
 
     pid_t manager_array[size];
 
@@ -167,7 +114,7 @@ int main(int argc, char *argv[])
         }
     }
 
-    printf("\n\n");
+    printf("\n");
 
     // scheduling matches
     fixture team;
@@ -231,122 +178,4 @@ int main(int argc, char *argv[])
     shm_unlink(SHARED_MEMORY_NAME);
 }
 
-void scheduling(int *manager_array, fixture *team)
-{
-    while (!isEmpty(q))
-    {
-        dequeue(q, team);
 
-        if (busy_array[team->first] == 1 && busy_array[team->second] == 1)
-        {
-            // making those teams busy, so that they can't be scheduled again , until they've finished their work.
-            busy_array[team->first] = 0;
-            busy_array[team->second] = 0;
-
-            // storing the opponent info , so that manager_process can know who their opponent is , when they're signaled to schedule the match.
-            against[team->first] = team->second;
-
-            siginfo_t sig;
-            waitid(P_PID, manager_array[team->first], &sig, WSTOPPED); // waiting for manager_process to stop
-            kill(manager_array[team->first], SIGCONT);                 // giving it the continue signal
-        }
-        else
-        {
-            enqueue(q, team);
-        }
-    }
-}
-
-void tableCreation(SS (*result)[size - 1])
-{
-    for (size_t i = 0; i < size; i++)
-    {
-        for (size_t j = 0; j < size - 1; j++)
-        {
-            int team = result[i][j].team;
-            score_sheet[i]->goals_scored += result[i][j].mine;
-            score_sheet[i]->goals_conceded += result[i][j].against;
-            score_sheet[team]->goals_scored += result[i][j].against;
-            score_sheet[team]->goals_conceded += result[i][j].mine;
-            if (result[i][j].mine > result[i][j].against)
-            {
-                score_sheet[i]->won += 1;
-                score_sheet[team]->lost += 1;
-                score_sheet[i]->score += 3;
-            }
-            else if (result[i][j].mine < result[i][j].against)
-            {
-                score_sheet[team]->won += 1;
-                score_sheet[i]->lost += 1;
-                score_sheet[team]->score += 3;
-            }
-            else
-            {
-                score_sheet[i]->tie += 1;
-                score_sheet[team]->tie += 1;
-                score_sheet[i]->score += 1;
-                score_sheet[team]->score += 1;
-            }
-        }
-    }
-}
-
-void sort()
-{
-    for (size_t i = 0; i < size; i++)
-    {
-        table *starter = score_sheet[i];
-
-        for (size_t j = i; j < size; j++)
-        {
-            if (starter->score < score_sheet[j]->score)
-            {
-                table *temp = score_sheet[j];
-                score_sheet[j] = starter;
-                starter = temp;
-            }
-            else if (starter->score == score_sheet[j]->score)
-            {
-                if (starter->goals_scored < score_sheet[j]->goals_scored)
-                {
-                    table *temp = score_sheet[j];
-                    score_sheet[j] = starter;
-                    starter = temp;
-                }
-
-                else if (starter->goals_scored == score_sheet[j]->goals_scored)
-                {
-                    if (starter->mine_index > score_sheet[j]->mine_index)
-                    {
-                        table *temp = score_sheet[j];
-                        score_sheet[j] = starter;
-                        starter = temp;
-                    }
-                }
-            }
-        }
-        score_sheet[i] = starter;
-    }
-}
-
-void printingTable()
-{
-    char *topRow[] = {"Team", "W", "D", "L", "GS", "GC", "Points"};
-
-    printf("\n\n");
-
-    printf("%*s%*s%*s%*s%*s%*s%*s\n", TAB, topRow[0], TAB, topRow[1], TAB, topRow[2], TAB, topRow[3], TAB, topRow[4], TAB, topRow[5], TAB, topRow[6]);
-    printf("-------------------------------------------------------------------\n");
-    for (int i = 0; i < size; i++)
-    {
-        printf("%*d%*d%*d%*d%*d%*d%*d",
-               TAB, score_sheet[i]->mine_index + 1,
-               TAB, score_sheet[i]->won,
-               TAB, score_sheet[i]->tie,
-               TAB, score_sheet[i]->lost,
-               TAB, score_sheet[i]->goals_scored,
-               TAB, score_sheet[i]->goals_conceded,
-               TAB, score_sheet[i]->score);
-        printf("\n");
-    }
-}

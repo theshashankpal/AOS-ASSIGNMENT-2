@@ -12,6 +12,7 @@
 #include <sys/mman.h>  /*Prot_READ constants*/
 #include <mqueue.h>    /* "O_CREAT" O_Constants*/
 #include <wait.h>      /* SIGCONT , SIGSTOP*/
+#include "queue.h"
 
 #define SHARED_MEMORY_NAME "/SYSSHAREDMEMORY"
 
@@ -26,14 +27,50 @@
 
 #define SHARED_MEMORY_NAME "/SYSSHAREDMEMORY"
 
-extern int shm_fd;
-extern void* ptr;
+#define TAB -10
 
+// Score struct that is put in shared memory.
 typedef struct _SS
 {   
     int team;
     int mine;
     int against;
 } SS;
+
+// for final table
+typedef struct _table
+{
+    int mine_index;
+    int won;
+    int lost;
+    int tie;
+    int goals_scored;
+    int goals_conceded;
+    int score;
+} table;
+
+// ds to store in a queue that is used for scheduling purposes.
+typedef struct _fixture
+{
+    int first;
+    int second;
+} fixture;
+
+
+extern int shm_fd;
+extern void *ptr;
+extern int size;
+extern int *against;
+extern int *busy_array;
+extern queue *q;
+extern table **score_sheet;
+
+void sort();
+
+void tableCreation(SS (*)[]);
+
+void scheduling(int *, fixture *);
+
+void printingTable();
 
 #endif //ASSIGNMENT_H

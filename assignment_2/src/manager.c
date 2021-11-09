@@ -3,6 +3,8 @@
 
 int shm_fd;
 void *ptr;
+int *against;
+int *busy_array;
 
 int main(int argc, char *argv[])
 {
@@ -35,9 +37,9 @@ int main(int argc, char *argv[])
         SS(*result)
         [size - 1];
 
-        int *against = (int *)ptr;                    // setting base address for first array
+        against = (int *)ptr;                    // setting base address for first array
         result = ptr + (2 * size * sizeof(int));      // setting base address for 2d array.
-        int *busy_array = ptr + (size * sizeof(int)); // setting base address for second array.
+        busy_array = ptr + (size * sizeof(int)); // setting base address for second array.
 
         srand(time(NULL) + getpid()); // setting up the seed for random function , and as pid is unique , we'll get random number everytime.
 

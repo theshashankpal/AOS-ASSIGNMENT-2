@@ -5,14 +5,18 @@ int shm_fd;
 void *ptr;
 int *against;
 int *busy_array;
+int count;
+int me;
+int opponent;
+int size;
 
 int main(int argc, char *argv[])
 {
-    int me = atoi(argv[1]);   // getting its own index
-    int size = atoi(argv[2]); // getting total no. of teams
+    me = atoi(argv[1]);   // getting its own index
+    size = atoi(argv[2]); // getting total no. of teams
 
     int allocation_size = size * (sizeof(int)) + (size * size - 1) * (sizeof(struct _SS)); // same formula as before.
-    int count = 0;
+    count = 0;
 
     while (1) // infinte loop
     {
@@ -38,26 +42,14 @@ int main(int argc, char *argv[])
         [size - 1];
 
         against = (int *)ptr;                    // setting base address for first array
-        result = ptr + (2 * size * sizeof(int));      // setting base address for 2d array.
+        result = ptr + (2 * size * sizeof(int)); // setting base address for 2d array.
         busy_array = ptr + (size * sizeof(int)); // setting base address for second array.
 
         srand(time(NULL) + getpid()); // setting up the seed for random function , and as pid is unique , we'll get random number everytime.
 
-        int opponent = against[me]; // storing index of the opponent.
+        opponent = against[me]; // storing index of the opponent.
 
-        printf("Starting Match : Team %d vs Team %d\n", me + 1, opponent + 1);
-      
-        sleep(3);
-
-        int mine_score = rand() % 6;
-        int opponent_score = rand() % 6;
-
-        // storing details of a match in the 2d shared array
-        result[me][count].team = opponent; 
-        result[me][count].mine = mine_score;
-        result[me][count++].against = opponent_score;
-
-        printf("Match Ended : Team %d vs Team %d    Result : %d-%d\n", me + 1, opponent + 1, mine_score, opponent_score);
+        simulate_match(result); // simulating match.
 
         // indicating that this manager_process has finished its match.
         busy_array[me] = 1;
@@ -70,3 +62,21 @@ int main(int argc, char *argv[])
         close(shm_fd);
     }
 }
+
+void simulate_match(SS (*result)[size-1])
+{
+    printf("Starting Match : Team %d vs Team %d\n", me + 1, opponent + 1);
+
+    sleep(3);
+
+    int mine_score = rand() % 6;
+    int opponent_score = rand() % 6;
+
+    // storing details of a match in the 2d shared array
+    result[me][count].team = opponent;
+    result[me][count].mine = mine_score;
+    result[me][count++].against = opponent_score;
+
+    printf("Match Ended : Team %d vs Team %d    Result : %d-%d\n", me + 1, opponent + 1, mine_score, opponent_score);
+}
+

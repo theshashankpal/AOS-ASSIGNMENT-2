@@ -14,9 +14,15 @@ int main(int argc, char *argv[])
     printf("\n");
     shm_unlink(SHARED_MEMORY_NAME); // just a precaution.
 
+    if (argc != 2)
+    {
+        printf("Error, no. of arguments you entered are too few or too many, please run it again : %d\n", argc);
+        return 0;
+    }
+
     FILE *fp;
     char *line = NULL;
-    fp = fopen("src/fixtures.txt", "r"); // opening file in read mode.
+    fp = fopen(argv[1], "r"); // opening file in read mode.
     size_t len = 0;
     ssize_t read;
     if (fp == NULL)

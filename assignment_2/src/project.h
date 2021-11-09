@@ -7,7 +7,6 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <semaphore.h> /* for semaphores */
 #include <unistd.h>    /* for fork() and execv */
 #include <sys/mman.h>  /*Prot_READ constants*/
 #include <mqueue.h>    /* "O_CREAT" O_Constants*/
@@ -65,12 +64,34 @@ extern int *busy_array;
 extern queue *q;
 extern table **score_sheet;
 
+/*
+Pre Condition : The table score_sheet should be formed.
+Post-Condition : Sorts the table based on the given conditions in the question.
+*/
 void sort();
 
+/*
+Pre Condition : All schedules must be completed , and their outcomes properly updates
+Post-Condition : Creates a score_sheet from the help of outcomes, which then can be printed showing the final summary.
+*/
 void tableCreation(SS (*)[]);
 
+/*
+Pre Condition : All the schedules must be read and stored in a queue
+Post-Condition : Gives signal to processes(manager/stadium) after reading the schedule from a queue. And runs until queue becomes empty.
+*/
 void scheduling(int *, fixture *);
 
+/*
+Pre Condition : The table score_sheet should be formed.
+Post-Condition : Prints the table.
+*/
 void printingTable();
+
+/*
+Pre Condition : match is against whom must be known via shared memory.
+Post-Condition : Gives the score using rand() and also updates it in the shared memory.
+*/
+void simulate_match(SS (*)[]);
 
 #endif //ASSIGNMENT_H

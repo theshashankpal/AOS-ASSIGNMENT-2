@@ -43,7 +43,7 @@ int main(int argc, char *argv[])
         int first;
         int second;
         read = fscanf(fp, "%d%d", &first, &second);
-        if (read == -1)
+        if (read == EOF)
             break;
         fixture team;
         team.first = first - 1;

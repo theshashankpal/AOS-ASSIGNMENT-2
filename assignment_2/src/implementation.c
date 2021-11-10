@@ -104,7 +104,9 @@ void printingTable()
 
     printf("\n\n");
 
-    printf("%*s%*s%*s%*s%*s%*s%*s\n", TAB, topRow[0], TAB, topRow[1], TAB, topRow[2], TAB, topRow[3], TAB, topRow[4], TAB, topRow[5], TAB, topRow[6]);
+    fflush(stdout);
+    printf(GRN "%*s%*s%*s%*s%*s%*s%*s\n" RESET, TAB, topRow[0], TAB, topRow[1], TAB, topRow[2], TAB, topRow[3], TAB, topRow[4], TAB, topRow[5], TAB, topRow[6]);
+    fflush(stdout);
     printf("-------------------------------------------------------------------\n");
     for (int i = 0; i < size; i++)
     {

@@ -77,6 +77,7 @@ void simulate_match(SS (*result)[size-1])
     result[me][count].mine = mine_score;
     result[me][count++].against = opponent_score;
 
-    printf("Match Ended : Team %d vs Team %d    Result : %d-%d\n", me + 1, opponent + 1, mine_score, opponent_score);
+    printf(GRN"Match Ended : Team %d vs Team %d    Result : %d-%d\n"RESET, me + 1, opponent + 1, mine_score, opponent_score);
+    fflush(stdout);
 }
 

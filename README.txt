@@ -16,7 +16,7 @@ scheduler.c : It creates n (total no. of teams) processes. Reads the schedules f
 manager.c : I'm taking manager, team and stadium as a single entity. As making them different didn't make sense and
             also question didn't ask for it specifically. This file simualte the match and updates the result.
 
-queue.c : File containing the code for data structure queue.
+queue.c & queue.h: File containing the code for data structure queue. (Used library from https://github.com/kostakis/Generic-Queue)
 
 implementation.c : Contains all the implementations of different functions used.
 
@@ -32,7 +32,7 @@ Lastly run : make
 -----------------------------------------------------------------------------------------------------------------------
 HOW TO RUN :
 
-First make sure you're in /assignment_1 directory.
+First make sure you're in /assignment_2 directory.
 Then to run program, type following with required amount of arguments : ./output (path of a file)
 
 For ex : ./output src/fixtures.txt
@@ -46,7 +46,7 @@ Description Of The Structure Of My Program :
     Will loop until queue becomes empty and gives signal to the process which has to simulate the match.
     After all the schedules have been completed, it will terminate all the running processes.
     Will create the table from the result that is stored in the shared memory.
-    Then, it will sort the table and print it.
+    Then, it will sort the table and print it. (Used selection sort)
     (I've used named Shared Memory from POSIX interface.)
 
 - Manager.c will link itself to the shared memory
@@ -54,7 +54,7 @@ Description Of The Structure Of My Program :
     After simulation , updates the result into the shared memory.
     And exit.
 
-- After everyone has exited and closed their file descriptors for shared memory ,
+- After printing of final table ,
     scheduler.c will unlink the shared memory.
     And exit.
 -----------------------------------------------------------------------------------------------------------------------
